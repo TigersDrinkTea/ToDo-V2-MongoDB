@@ -3,6 +3,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require('mongoose');
+const _ = require('lodash');
 const app = express();
 
 app.set('view engine', 'ejs');
@@ -86,7 +87,7 @@ app.get("/", function (req, res) {
 // using express route parameters to dynamically create the routes we need to new pages, whatever they type in the url this creates a dedicated /route (page)
 app.get('/:customListName', function (req, res) {
 
-  const customListName = req.params.customListName;
+  const customListName = _.capitalize(req.params.customListName);
 
   List.findOne({
     name: customListName
@@ -145,17 +146,28 @@ app.post("/", function (req, res) {
 app.post('/delete', function (req, res) {
 
   const checkedItemId = req.body.checkBox; // get the id of the info from the check box so you know what to delete, using ejs <%= %> in list.ejs
+  const listName = req.body.listName;
 
-  Item.findByIdAndRemove(checkedItemId, function (err) { //actually find the item and remove it
-    if (err) {
-      console.log(err);
+  if (listName === 'Today') {
 
-    } else {
-      console.log('Successfully deleted');
-      res.redirect('/'); // redirect to / route updates the page to show all docs listed in DB as thats what we made the / route do !
-    }
-  });
-
+// use this function to use the hidden input listName to determine if you are deleting from a custom or home list and redirect as appropriate
+    Item.findByIdAndRemove(checkedItemId, function (err) { //actually find the item and remove it
+      if (err) {
+        console.log(err);
+  
+      } else {
+        console.log('Successfully deleted');
+        res.redirect('/'); // redirect to / route updates the page to show all docs listed in DB as thats what we made the / route do !
+      }
+    });
+  }else {
+    
+    List.findOneAndUpdate({name:listName}, {$pull: {items:{_id:checkedItemId}}}, function(err,foundList){
+if (!err){
+  res.redirect('/' + listName);
+}
+    });
+  }
 });
 
 
